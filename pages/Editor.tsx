@@ -5,7 +5,8 @@ import { exportProjectToZip } from '../services/export';
 import { Toolbar } from '../components/Toolbar';
 import { LayerPanel } from '../components/LayerPanel';
 import { CanvasBoard } from '../components/CanvasBoard';
-import { ChevronLeft, ArrowLeft, ArrowRight, Download, Maximize2, Minimize2, Loader2 } from 'lucide-react';
+import { ChevronLeft, ArrowLeft, ArrowRight, Download, Maximize2, Minimize2, Loader2, Archive } from 'lucide-react';
+import { backupProject } from '../services/backup';
 
 interface EditorProps {
   project: Project;
