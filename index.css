@@ -1,0 +1,41 @@
+/* StickerStudio 基礎樣式 */
+
+/* 自訂滾動條 */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Canvas 繪圖游標 */
+.cursor-crosshair {
+  cursor: crosshair;
+}
+
+/* 防止圖片拖曳 */
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* 動畫效果 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
