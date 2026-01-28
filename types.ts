@@ -8,7 +8,7 @@ export interface Layer {
 export type StickerType = 'regular' | 'main' | 'tab';
 
 export interface StickerMetadata {
-  id: string; 
+  id: string;
   index: number;
   type: StickerType;
   status: 'empty' | 'draft' | 'complete';
@@ -24,6 +24,7 @@ export interface Project {
   createdAt: number;
   updatedAt: number;
   stickers: StickerMetadata[];
+  layers?: Layer[]; // Making it optional for backward compatibility
 }
 
 export type BrushType = 'pen' | 'marker' | 'airbrush' | 'pencil' | 'crayon' | 'watercolor' | 'calligraphy';

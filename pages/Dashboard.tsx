@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Project, StickerMetadata } from '../types';
 import { loadProjects, saveProject, deleteProjectData } from '../services/db';
-import { Plus, Trash2, Package } from 'lucide-react';
+import { restoreProject } from '../services/backup'; // Import restore service
+import { Plus, Trash2, Package, Upload } from 'lucide-react';
 
 interface DashboardProps {
   onOpenProject: (project: Project) => void;
@@ -12,6 +13,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
   const [showModal, setShowModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [stickerCount, setStickerCount] = useState(8);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchProjects();
@@ -20,6 +23,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
   const fetchProjects = async () => {
     const data = await loadProjects();
     setProjects(data.sort((a, b) => b.updatedAt - a.updatedAt));
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    try {
+      const newProject = await restoreProject(file);
+      if (newProject) {
+        await fetchProjects();
+        // Optional: Auto open imported project?
+        // onOpenProject(newProject);
+        alert("專案匯入成功！");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsImporting(false);
+      // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleCreate = async () => {
@@ -41,7 +70,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
       id: crypto.randomUUID(),
       name: newProjectName,
       width: 370,
-      height: 320, 
+      height: 320,
       totalStickers: stickerCount,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -56,9 +85,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if(confirm('您確定要刪除此專案嗎？所有繪圖內容將會遺失。')) {
-        await deleteProjectData(id);
-        fetchProjects();
+    if (confirm('您確定要刪除此專案嗎？所有繪圖內容將會遺失。')) {
+      await deleteProjectData(id);
+      fetchProjects();
     }
   }
 
@@ -68,18 +97,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
         <header className="flex justify-between items-center mb-10">
           <div>
             <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-2">
-                <span className="bg-green-500 text-white p-2 rounded-lg"><Package /></span>
-                StickerStudio
+              <span className="bg-green-500 text-white p-2 rounded-lg"><Package /></span>
+              StickerStudio
             </h1>
             <p className="text-slate-500 mt-2">管理您的 LINE 貼圖專案</p>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-slate-900 hover:bg-slate-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-lg transition-all"
-          >
-            <Plus size={20} />
-            新建專案
-          </button>
+          <div className="flex gap-3">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".zip"
+              className="hidden"
+            />
+            <button
+              onClick={handleImportClick}
+              disabled={isImporting}
+              className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-6 py-3 rounded-lg flex items-center gap-2 shadow-sm transition-all disabled:opacity-50"
+            >
+              <Upload size={20} />
+              {isImporting ? "匯入中..." : "匯入專案"}
+            </button>
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-slate-900 hover:bg-slate-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 shadow-lg transition-all"
+            >
+              <Plus size={20} />
+              新建專案
+            </button>
+          </div>
         </header>
 
         {projects.length === 0 ? (
@@ -95,23 +141,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
                 className="bg-white rounded-xl shadow-sm hover:shadow-xl border border-slate-200 cursor-pointer transition-all overflow-hidden group"
               >
                 <div className="h-40 bg-slate-100 flex items-center justify-center relative">
-                   <div className="grid grid-cols-4 gap-1 p-4 opacity-50">
-                        {project.stickers.filter(s => s.type === 'regular').slice(0,8).map((s, i) => (
-                            <div key={i} className="w-8 h-8 bg-white rounded-sm border border-slate-200 overflow-hidden">
-                                {s.thumbnail && <img src={s.thumbnail} alt="" className="w-full h-full object-contain" />}
-                            </div>
-                        ))}
-                   </div>
-                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+                  <div className="grid grid-cols-4 gap-1 p-4 opacity-50">
+                    {project.stickers.filter(s => s.type === 'regular').slice(0, 8).map((s, i) => (
+                      <div key={i} className="w-8 h-8 bg-white rounded-sm border border-slate-200 overflow-hidden">
+                        {s.thumbnail && <img src={s.thumbnail} alt="" className="w-full h-full object-contain" />}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
                 </div>
                 <div className="p-5">
                   <div className="flex justify-between items-start">
                     <div>
-                        <h3 className="font-bold text-lg text-slate-800">{project.name}</h3>
-                        <p className="text-sm text-slate-500">{project.totalStickers} 張貼圖 • {new Date(project.updatedAt).toLocaleDateString()}</p>
+                      <h3 className="font-bold text-lg text-slate-800">{project.name}</h3>
+                      <p className="text-sm text-slate-500">{project.totalStickers} 張貼圖 • {new Date(project.updatedAt).toLocaleDateString()}</p>
                     </div>
                     <button onClick={(e) => handleDelete(e, project.id)} className="text-slate-300 hover:text-red-500 p-2">
-                        <Trash2 size={18} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 </div>

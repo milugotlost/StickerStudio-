@@ -20,13 +20,13 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
   const [isLayerPanelCollapsed, setIsLayerPanelCollapsed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [layers, setLayers] = useState<Layer[]>([
+  const [layers, setLayers] = useState<Layer[]>(project.layers || [
     { id: 'l_draft', name: '草稿', visible: true, opacity: 0.5 },
     { id: 'l_color', name: '上色', visible: true, opacity: 1 },
     { id: 'l_line', name: '線稿', visible: true, opacity: 1 },
   ]);
 
-  const [activeLayerId, setActiveLayerId] = useState('l_line');
+  const [activeLayerId, setActiveLayerId] = useState(layers.find(l => l.id === 'l_line') ? 'l_line' : layers[layers.length - 1].id);
   const [brushSettings, setBrushSettings] = useState<BrushSettings>({
     color: '#000000', size: 4, opacity: 1, tool: 'brush', brushType: 'pen', stabilization: 2,
     text: { content: '你好', fontFamily: 'sans-serif', hasBorder: false, borderColor: '#ffffff', borderWidth: 4, hasBackground: false, backgroundColor: '#fbbf24', letterSpacing: 0 }
@@ -68,7 +68,8 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
     const updatedStickers = project.stickers.map(s =>
       s.id === activeStickerId ? { ...s, status: 'draft' as const, thumbnail } : s
     );
-    const updatedProject = { ...project, updatedAt: Date.now(), stickers: updatedStickers };
+    // Save layers state into project
+    const updatedProject = { ...project, updatedAt: Date.now(), stickers: updatedStickers, layers: layers };
     await saveProject(updatedProject);
 
     // If we are going back, DO NOT update the parent state as it would re-open the project
@@ -149,6 +150,14 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
 
           <button onClick={() => setIsZenMode(!isZenMode)} className={`p-2 rounded-lg transition-colors ${isZenMode ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`} title="專注模式">
             {isZenMode ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+          </button>
+
+          <button
+            onClick={() => backupProject(project)}
+            className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+            title="備份專案 (下載原始檔)"
+          >
+            <Archive size={20} />
           </button>
 
           <button
