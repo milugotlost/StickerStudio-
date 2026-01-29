@@ -1,11 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Project, Layer, BrushSettings, CanvasHandle } from '../types';
 import { saveProject } from '../services/db';
 import { exportProjectToZip } from '../services/export';
 import { Toolbar } from '../components/Toolbar';
 import { LayerPanel } from '../components/LayerPanel';
 import { CanvasBoard } from '../components/CanvasBoard';
-import { ChevronLeft, ArrowLeft, ArrowRight, Download, Maximize2, Minimize2, Loader2, Archive } from 'lucide-react';
+import { ChevronLeft, ArrowLeft, ArrowRight, Download, Maximize2, Minimize2, Loader2, Archive, Palette, Layers, Image as ImageIcon, Undo, Redo } from 'lucide-react';
 import { backupProject } from '../services/backup';
 
 interface EditorProps {
@@ -21,6 +21,16 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
   const [isLayerPanelCollapsed, setIsLayerPanelCollapsed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // 手機版狀態
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  const [mobilePanel, setMobilePanel] = useState<'none' | 'stickers' | 'tools' | 'layers'>('none');
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [layers, setLayers] = useState<Layer[]>(project.layers || [
     { id: 'l_draft', name: '草稿', visible: true, opacity: 0.5 },
     { id: 'l_color', name: '上色', visible: true, opacity: 1 },
@@ -30,7 +40,7 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
   const [activeLayerId, setActiveLayerId] = useState(layers.find(l => l.id === 'l_line') ? 'l_line' : layers[layers.length - 1].id);
   const [brushSettings, setBrushSettings] = useState<BrushSettings>({
     color: '#000000', size: 4, opacity: 1, tool: 'brush', brushType: 'pen', stabilization: 2,
-    text: { content: '你好', fontFamily: 'sans-serif', hasBorder: false, borderColor: '#ffffff', borderWidth: 4, hasBackground: false, backgroundColor: '#fbbf24', letterSpacing: 0 }
+    text: { content: '你好', fontFamily: 'sans-serif', fontSize: 48, x: 50, y: 50, hasBorder: false, borderColor: '#ffffff', borderWidth: 4, hasBackground: false, backgroundColor: '#fbbf24', letterSpacing: 0 }
   });
 
   const [canUndo, setCanUndo] = useState(false);
@@ -46,12 +56,10 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
     height: activeSticker.type === 'main' ? 240 : activeSticker.type === 'tab' ? 74 : 320,
   };
 
-  // Improved save sticker with safety timeout to prevent hanging UI
   const handleSaveSticker = async () => {
     if (!canvasRef.current || isSaving) return "";
     setIsSaving(true);
     try {
-      // Use a timeout to ensure we don't wait forever if IndexedDB/Canvas is busy
       const savePromise = canvasRef.current.save();
       const timeoutPromise = new Promise<string>((resolve) => setTimeout(() => resolve(""), 500));
       return await Promise.race([savePromise, timeoutPromise]);
@@ -64,16 +72,13 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
   };
 
   const handleSaveComplete = async (thumbnail: string) => {
-    // Only update project if we actually got a thumbnail
     if (!thumbnail) return;
     const updatedStickers = project.stickers.map(s =>
       s.id === activeStickerId ? { ...s, status: 'draft' as const, thumbnail } : s
     );
-    // Save layers state into project
     const updatedProject = { ...project, updatedAt: Date.now(), stickers: updatedStickers, layers: layers };
     await saveProject(updatedProject);
 
-    // If we are going back, DO NOT update the parent state as it would re-open the project
     if (!isNavigatingBack.current) {
       onUpdateProject(updatedProject);
     }
@@ -81,7 +86,6 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
 
   const switchSticker = async (newId: string | undefined) => {
     if (!newId || newId === activeStickerId || isSaving) return;
-    // Attempt save, but move on even if it takes a bit too long
     await handleSaveSticker();
     setActiveStickerId(newId);
   };
@@ -91,17 +95,177 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
     exportProjectToZip(project, layers);
   };
 
-  // Simplest possible back navigation to ensure it NEVER fails
   const handleGoBack = () => {
     isNavigatingBack.current = true;
-    // 1. Trigger navigation immediately for better UX
     onBack();
-    // 2. Try to save in background if possible, but don't wait for it
     if (canvasRef.current) {
       canvasRef.current.save().catch(err => console.error("Background save on exit failed:", err));
     }
   };
 
+  const closeMobilePanel = () => setMobilePanel('none');
+
+  // ==================== 手機版介面 ====================
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-100 font-sans no-select">
+        {/* 手機版 Header */}
+        <header className="mobile-header shrink-0">
+          <div className="flex items-center gap-2">
+            <button onClick={handleGoBack} className="touch-target text-gray-600">
+              <ChevronLeft size={24} />
+            </button>
+            <div className="bg-slate-800 text-white px-2 py-0.5 rounded text-xs font-bold">
+              {activeSticker.type === 'main' ? 'M' : activeSticker.type === 'tab' ? 'T' : activeStickerIndex - 1}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button onClick={() => canvasRef.current?.undo()} disabled={!canUndo} className="touch-target text-gray-500 disabled:opacity-30">
+              <Undo size={20} />
+            </button>
+            <button onClick={() => canvasRef.current?.redo()} disabled={!canRedo} className="touch-target text-gray-500 disabled:opacity-30">
+              <Redo size={20} />
+            </button>
+            <button onClick={() => setIsZenMode(!isZenMode)} className={`touch-target ${isZenMode ? 'text-blue-600' : 'text-gray-500'}`}>
+              {isZenMode ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+            </button>
+            <button onClick={handleExport} disabled={isSaving} className="touch-target text-gray-500 disabled:opacity-50">
+              <Download size={20} />
+            </button>
+          </div>
+        </header>
+
+        {/* 手機版貼圖選擇器 (頂部 strip) */}
+        {!isZenMode && (
+          <div className="mobile-sticker-strip shrink-0">
+            {project.stickers.map((s, i) => (
+              <div
+                key={s.id}
+                onClick={() => switchSticker(s.id)}
+                className={`mobile-sticker-item ${s.id === activeStickerId ? 'active' : ''}`}
+              >
+                {s.thumbnail ? (
+                  <img src={s.thumbnail} className="w-full h-full object-contain p-1" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-bold">
+                    {s.type === 'main' ? 'M' : s.type === 'tab' ? 'T' : i - 1}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Canvas 區域 */}
+        <div className="flex-1 overflow-hidden relative" style={{ paddingBottom: isZenMode ? 0 : '56px' }}>
+          <CanvasBoard
+            ref={canvasRef}
+            width={canvasSize.width}
+            height={canvasSize.height}
+            layers={layers}
+            activeLayerId={activeLayerId}
+            settings={brushSettings}
+            projectId={project.id}
+            stickerIndex={activeStickerIndex}
+            onSaveComplete={handleSaveComplete}
+            onHistoryChange={(u, r) => { setCanUndo(u); setCanRedo(r); }}
+          />
+        </div>
+
+        {/* 底部導航列 */}
+        {!isZenMode && (
+          <nav className="mobile-bottom-nav">
+            <button onClick={() => setMobilePanel(mobilePanel === 'stickers' ? 'none' : 'stickers')} className={`mobile-nav-btn ${mobilePanel === 'stickers' ? 'active' : ''}`}>
+              <ImageIcon size={22} />
+              <span>貼圖</span>
+            </button>
+            <button onClick={() => setMobilePanel(mobilePanel === 'tools' ? 'none' : 'tools')} className={`mobile-nav-btn ${mobilePanel === 'tools' ? 'active' : ''}`}>
+              <Palette size={22} />
+              <span>工具</span>
+            </button>
+            <button onClick={() => setMobilePanel(mobilePanel === 'layers' ? 'none' : 'layers')} className={`mobile-nav-btn ${mobilePanel === 'layers' ? 'active' : ''}`}>
+              <Layers size={22} />
+              <span>圖層</span>
+            </button>
+          </nav>
+        )}
+
+        {/* Mobile Overlay */}
+        {mobilePanel !== 'none' && <div className="mobile-overlay" onClick={closeMobilePanel} />}
+
+        {/* 工具面板 (底部 Sheet) */}
+        {mobilePanel === 'tools' && (
+          <div className="mobile-sheet">
+            <div className="mobile-sheet-handle" />
+            <Toolbar
+              settings={brushSettings}
+              onChange={setBrushSettings}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onUndo={() => canvasRef.current?.undo()}
+              onRedo={() => canvasRef.current?.redo()}
+              onSave={handleSaveSticker}
+              onClearLayer={() => canvasRef.current?.clearLayer()}
+              collapsed={false}
+              onToggleCollapse={() => { }}
+              onImportImage={(url) => canvasRef.current?.drawImageOnLayer(activeLayerId, url)}
+              isMobile={true}
+            />
+          </div>
+        )}
+
+        {/* 圖層面板 (右側 Drawer) */}
+        {mobilePanel === 'layers' && (
+          <div className="mobile-drawer">
+            <LayerPanel
+              layers={layers}
+              activeLayerId={activeLayerId}
+              onAddLayer={() => { const id = `l_${Date.now()}`; setLayers([...layers, { id, name: `圖層 ${layers.length + 1}`, visible: true, opacity: 1 }]); setActiveLayerId(id); }}
+              onDeleteLayer={(id) => setLayers(layers.filter(l => l.id !== id))}
+              onSelectLayer={setActiveLayerId}
+              onToggleVisibility={(id) => setLayers(layers.map(l => l.id === id ? { ...l, visible: !l.visible } : l))}
+              onRenameLayer={(id, name) => setLayers(layers.map(l => l.id === id ? { ...l, name } : l))}
+              onUpdateOpacity={(id, opacity) => setLayers(layers.map(l => l.id === id ? { ...l, opacity } : l))}
+              onClearLayer={(id) => canvasRef.current?.clearLayer(id)}
+              onReorderLayers={(d, t) => { const from = layers.findIndex(l => l.id === d); const to = layers.findIndex(l => l.id === t); const newL = [...layers]; const [m] = newL.splice(from, 1); newL.splice(to, 0, m); setLayers(newL); }}
+              collapsed={false}
+              onToggleCollapse={() => { }}
+              isMobile={true}
+              onClose={closeMobilePanel}
+            />
+          </div>
+        )}
+
+        {/* 貼圖選擇器面板 */}
+        {mobilePanel === 'stickers' && (
+          <div className="mobile-sheet">
+            <div className="mobile-sheet-handle" />
+            <h3 className="text-sm font-bold text-gray-700 mb-3">選擇貼圖</h3>
+            <div className="grid grid-cols-5 gap-3">
+              {project.stickers.map((s, i) => (
+                <div
+                  key={s.id}
+                  onClick={() => { switchSticker(s.id); closeMobilePanel(); }}
+                  className={`aspect-square rounded-xl border-2 overflow-hidden cursor-pointer transition-all ${s.id === activeStickerId ? 'border-slate-800 shadow-lg scale-105' : 'border-gray-200 opacity-70'}`}
+                >
+                  {s.thumbnail ? (
+                    <img src={s.thumbnail} className="w-full h-full object-contain p-1" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 font-bold bg-gray-50">
+                      {s.type === 'main' ? 'M' : s.type === 'tab' ? 'T' : i - 1}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ==================== 桌面版介面 (原本的) ====================
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-sans">
       <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 z-40 shadow-sm shrink-0">
@@ -185,6 +349,7 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
             collapsed={isToolbarCollapsed}
             onToggleCollapse={() => setIsToolbarCollapsed(!isToolbarCollapsed)}
             onImportImage={(url) => canvasRef.current?.drawImageOnLayer(activeLayerId, url)}
+            isMobile={false}
           />
         )}
 
@@ -215,6 +380,7 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
             onReorderLayers={(d, t) => { const from = layers.findIndex(l => l.id === d); const to = layers.findIndex(l => l.id === t); const newL = [...layers]; const [m] = newL.splice(from, 1); newL.splice(to, 0, m); setLayers(newL); }}
             collapsed={isLayerPanelCollapsed}
             onToggleCollapse={() => setIsLayerPanelCollapsed(!isLayerPanelCollapsed)}
+            isMobile={false}
           />
         )}
       </div>

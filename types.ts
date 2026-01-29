@@ -32,6 +32,9 @@ export type BrushType = 'pen' | 'marker' | 'airbrush' | 'pencil' | 'crayon' | 'w
 export interface TextSettings {
   content: string;
   fontFamily: string;
+  fontSize: number;       // 新增：文字大小
+  x: number;              // 新增：水平位置 (0-100%)
+  y: number;              // 新增：垂直位置 (0-100%)
   hasBorder: boolean;
   borderWidth: number;
   borderColor: string;

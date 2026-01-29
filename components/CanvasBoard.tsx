@@ -43,12 +43,12 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
   const [isDrawing, setIsDrawing] = useState(false);
   const [textPos, setTextPos] = useState({ x: width / 2, y: height / 2 });
   const [isDraggingText, setIsDraggingText] = useState(false);
-  
+
   const lastStablePoint = useRef<Point | null>(null);
   const currentHistoryStart = useRef<ImageData | null>(null);
   const undoStack = useRef<HistoryStep[]>([]);
   const redoStack = useRef<HistoryStep[]>([]);
-  
+
   // Use local refs to ensure the save logic always uses the ID/Index present when it was triggered
   const currentInfoRef = useRef({ projectId, stickerIndex });
   useEffect(() => {
@@ -58,7 +58,7 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
   const performSave = async (): Promise<string> => {
     // Capture the info at the start of the save
     const { projectId: pid, stickerIndex: sidx } = currentInfoRef.current;
-    
+
     try {
       // 1. Save each layer to IndexedDB
       for (const l of layers) {
@@ -68,7 +68,7 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
           await saveLayerImage(`${pid}_${sidx}_${l.id}`, dataUrl);
         }
       }
-      
+
       // 2. Generate composite thumbnail
       const temp = document.createElement('canvas');
       temp.width = width;
@@ -172,7 +172,7 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
           });
         }
       }
-      
+
       if (active) {
         undoStack.current = [];
         redoStack.current = [];
@@ -198,22 +198,22 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
     const { r, g, b } = hexToRgb(fillColor);
     const a = Math.floor(opacity * 255);
     const startIdx = (y * width + x) * 4;
-    const sr = data[startIdx], sg = data[startIdx+1], sb = data[startIdx+2], sa = data[startIdx+3];
-    
-    if (Math.abs(sr-r)<1 && Math.abs(sg-g)<1 && Math.abs(sb-b)<1 && Math.abs(sa-a)<1) return;
-    
+    const sr = data[startIdx], sg = data[startIdx + 1], sb = data[startIdx + 2], sa = data[startIdx + 3];
+
+    if (Math.abs(sr - r) < 1 && Math.abs(sg - g) < 1 && Math.abs(sb - b) < 1 && Math.abs(sa - a) < 1) return;
+
     const stack: [number, number][] = [[x, y]];
     const visited = new Uint8Array(width * height);
     while (stack.length) {
       const [cx, cy] = stack.pop()!;
-      if (cx<0 || cx>=width || cy<0 || cy>=height) continue;
+      if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
       const idx = cy * width + cx;
       if (visited[idx]) continue;
       visited[idx] = 1;
       const pos = idx * 4;
-      if (Math.abs(data[pos]-sr)<=FILL_TOLERANCE && Math.abs(data[pos+1]-sg)<=FILL_TOLERANCE && Math.abs(data[pos+2]-sb)<=FILL_TOLERANCE && Math.abs(data[pos+3]-sa)<=FILL_TOLERANCE) {
-        data[pos] = r; data[pos+1] = g; data[pos+2] = b; data[pos+3] = a;
-        stack.push([cx+1, cy], [cx-1, cy], [cx, cy+1], [cx, cy-1]);
+      if (Math.abs(data[pos] - sr) <= FILL_TOLERANCE && Math.abs(data[pos + 1] - sg) <= FILL_TOLERANCE && Math.abs(data[pos + 2] - sb) <= FILL_TOLERANCE && Math.abs(data[pos + 3] - sa) <= FILL_TOLERANCE) {
+        data[pos] = r; data[pos + 1] = g; data[pos + 2] = b; data[pos + 3] = a;
+        stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
       }
     }
     ctx.putImageData(imageData, 0, 0);
@@ -287,8 +287,19 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
     const ctx = canvasRefs.current[activeLayerId]?.getContext('2d');
     if (ctx) {
       const before = ctx.getImageData(0, 0, width, height);
-      ctx.font = `${settings.size}px "${settings.text.fontFamily}", sans-serif`;
+      ctx.font = `${settings.text.fontSize}px "${settings.text.fontFamily}", sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      if (settings.text.hasBackground) {
+        const textMetrics = ctx.measureText(settings.text.content);
+        const padding = settings.text.fontSize * 0.2;
+        ctx.fillStyle = settings.text.backgroundColor;
+        ctx.fillRect(
+          textPos.x - textMetrics.width / 2 - padding,
+          textPos.y - settings.text.fontSize / 2 - padding,
+          textMetrics.width + padding * 2,
+          settings.text.fontSize + padding * 2
+        );
+      }
       if (settings.text.hasBorder) {
         ctx.lineWidth = settings.text.borderWidth;
         ctx.strokeStyle = settings.text.borderColor;
@@ -303,7 +314,7 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
 
   return (
     <div className="flex-1 bg-gray-200 flex items-center justify-center p-8 overflow-auto relative custom-scrollbar">
-      <div 
+      <div
         ref={containerRef}
         className="relative bg-white shadow-2xl checkerboard-bg"
         style={{ width: '90vmin', aspectRatio: `${width}/${height}`, touchAction: 'none' }}
@@ -313,11 +324,25 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
           <canvas key={l.id} ref={el => canvasRefs.current[l.id] = el} width={width} height={height} className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: l.visible ? l.opacity : 0 }} />
         ))}
         {settings.tool === 'text' && settings.text.content && (
-          <div className="absolute origin-center flex flex-col items-center group pointer-events-none" style={{ left: `${(textPos.x/width)*100}%`, top: `${(textPos.y/height)*100}%`, transform: 'translate(-50%, -50%)' }}>
-            <div onMouseDown={() => setIsDraggingText(true)} className="cursor-move select-none whitespace-pre pointer-events-auto border border-blue-400 border-dashed p-1" style={{ fontFamily: settings.text.fontFamily, fontSize: `${(settings.size/width)*90}vmin`, color: settings.color, WebkitTextStroke: settings.text.hasBorder ? `${(settings.text.borderWidth/width)*90}vmin ${settings.text.borderColor}` : '0', paintOrder: 'stroke fill' }}>{settings.text.content}</div>
-            <div className="flex gap-2 mt-4 bg-white shadow-xl rounded-full p-2 border border-gray-200 pointer-events-auto opacity-0 group-hover:opacity-100 transition-all scale-90">
-              <button onClick={bakeText} className="p-2 bg-green-500 text-white rounded-full transition-transform active:scale-90"><Check size={20}/></button>
-              <button onClick={() => setTextPos({x:-1000, y:-1000})} className="p-2 bg-red-500 text-white rounded-full transition-transform active:scale-90"><X size={20}/></button>
+          <div className="absolute origin-center flex flex-col items-center group pointer-events-none" style={{ left: `${(textPos.x / width) * 100}%`, top: `${(textPos.y / height) * 100}%`, transform: 'translate(-50%, -50%)' }}>
+            <div
+              onPointerDown={(e) => { e.stopPropagation(); setIsDraggingText(true); }}
+              className="cursor-move select-none whitespace-pre pointer-events-auto border-2 border-blue-400 border-dashed rounded-lg"
+              style={{
+                fontFamily: settings.text.fontFamily,
+                fontSize: `${(settings.text.fontSize / width) * 90}vmin`,
+                color: settings.color,
+                WebkitTextStroke: settings.text.hasBorder ? `${(settings.text.borderWidth / width) * 90}vmin ${settings.text.borderColor}` : '0',
+                paintOrder: 'stroke fill',
+                backgroundColor: settings.text.hasBackground ? settings.text.backgroundColor : 'transparent',
+                padding: settings.text.hasBackground ? '0.2em 0.4em' : '0.1em',
+              }}
+            >
+              {settings.text.content}
+            </div>
+            <div className="flex gap-2 mt-2 bg-white shadow-xl rounded-full p-2 border border-gray-200 pointer-events-auto">
+              <button onClick={bakeText} className="p-2 bg-green-500 text-white rounded-full transition-transform active:scale-90"><Check size={20} /></button>
+              <button onClick={() => setTextPos({ x: -1000, y: -1000 })} className="p-2 bg-red-500 text-white rounded-full transition-transform active:scale-90"><X size={20} /></button>
             </div>
           </div>
         )}
