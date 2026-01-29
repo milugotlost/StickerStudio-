@@ -1,6 +1,5 @@
 # 🎨 StickerStudio - LINE 貼圖製作工具
 
-![Banner](https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6)
 
 在瀏覽器中輕鬆繪製並匯出符合 LINE 規格的貼圖包。**完整支援手機與平板觸控操作！**
 
