@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Project, StickerMetadata } from '../types';
 import { loadProjects, saveProject, deleteProjectData } from '../services/db';
 import { restoreProject } from '../services/backup';
-import { Plus, Trash2, Upload } from 'lucide-react';
+import { Plus, Trash2, Upload, AtSign } from 'lucide-react';
 import { AnimatedButton, AnimatedCard } from '../components/AnimatedComponents';
 
 interface DashboardProps {
@@ -115,6 +115,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
               accept=".zip"
               className="hidden"
             />
+            <motion.a
+              href="https://www.threads.com/@milu_got_lost"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2.5 sm:p-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors flex items-center justify-center"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              title="追蹤我 (Threads)"
+            >
+              <AtSign size={18} />
+            </motion.a>
             <AnimatedButton
               onClick={handleImportClick}
               disabled={isImporting}
