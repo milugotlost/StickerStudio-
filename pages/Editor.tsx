@@ -1,12 +1,75 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Project, Layer, BrushSettings, CanvasHandle } from '../types';
-import { saveProject } from '../services/db';
+import { saveProject, loadLayerImage } from '../services/db';
 import { exportProjectToZip } from '../services/export';
 import { Toolbar } from '../components/Toolbar';
 import { LayerPanel } from '../components/LayerPanel';
 import { CanvasBoard } from '../components/CanvasBoard';
 import { ChevronLeft, ArrowLeft, ArrowRight, Download, Maximize2, Minimize2, Loader2, Archive, Palette, Layers, Image as ImageIcon, Undo, Redo } from 'lucide-react';
 import { backupProject } from '../services/backup';
+
+// 為指定貼圖生成縮圖
+const generateThumbnailForSticker = async (
+  projectId: string,
+  stickerIndex: number,
+  stickerType: string,
+  layerIds: string[]
+): Promise<string | null> => {
+  const width = stickerType === 'main' ? 240 : stickerType === 'tab' ? 96 : 370;
+  const height = stickerType === 'main' ? 240 : stickerType === 'tab' ? 74 : 320;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  let hasContent = false;
+  for (const layerId of layerIds) {
+    const key = `${projectId}_${stickerIndex}_${layerId}`;
+    const dataUrl = await loadLayerImage(key);
+    if (dataUrl) {
+      hasContent = true;
+      await new Promise<void>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = dataUrl;
+      });
+    }
+  }
+
+  return hasContent ? canvas.toDataURL('image/png', 0.5) : null;
+};
+
+// 即時預覽元件
+const PreviewCanvas: React.FC<{ canvasRef: React.RefObject<CanvasHandle> }> = ({ canvasRef }) => {
+  const [preview, setPreview] = useState<string>('');
+
+  useEffect(() => {
+    let rafId: number;
+    let lastUpdate = 0;
+    const updatePreview = (time: number) => {
+      if (time - lastUpdate > 100 && canvasRef.current) { // 每 100ms 更新一次
+        setPreview(canvasRef.current.getPreview());
+        lastUpdate = time;
+      }
+      rafId = requestAnimationFrame(updatePreview);
+    };
+    rafId = requestAnimationFrame(updatePreview);
+    return () => cancelAnimationFrame(rafId);
+  }, [canvasRef]);
+
+  return preview ? (
+    <img src={preview} className="w-full h-full object-contain" alt="預覽" />
+  ) : (
+    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">載入中...</div>
+  );
+};
 
 interface EditorProps {
   project: Project;
@@ -20,6 +83,9 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
   const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false);
   const [isLayerPanelCollapsed, setIsLayerPanelCollapsed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // 本地管理 stickers 以確保縮圖更新後 UI 會重新渲染
+  const [localStickers, setLocalStickers] = useState(project.stickers);
 
   // 手機版狀態
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
@@ -47,6 +113,48 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
   const [canRedo, setCanRedo] = useState(false);
   const canvasRef = useRef<CanvasHandle>(null);
 
+  // 即時預覽（用於底部縮圖）
+  const [livePreview, setLivePreview] = useState<string>('');
+  useEffect(() => {
+    let rafId: number;
+    let lastUpdate = 0;
+    const updatePreview = (time: number) => {
+      if (time - lastUpdate > 200 && canvasRef.current) { // 每 200ms 更新一次
+        setLivePreview(canvasRef.current.getPreview());
+        lastUpdate = time;
+      }
+      rafId = requestAnimationFrame(updatePreview);
+    };
+    rafId = requestAnimationFrame(updatePreview);
+    return () => cancelAnimationFrame(rafId);
+  }, [activeStickerId]);
+
+  // 載入時為所有貼圖生成縮圖
+  const thumbnailsGenerated = useRef(false);
+  useEffect(() => {
+    if (thumbnailsGenerated.current) return; // 防止 StrictMode 重複執行
+    thumbnailsGenerated.current = true;
+
+    const generateAllThumbnails = async () => {
+      const layerIds = layers.map(l => l.id);
+      const updatedStickers = await Promise.all(
+        project.stickers.map(async (s, i) => {
+          const thumb = await generateThumbnailForSticker(project.id, i, s.type, layerIds);
+          return thumb ? { ...s, thumbnail: thumb } : s;
+        })
+      );
+
+      const hasChanges = updatedStickers.some((s, i) => s.thumbnail !== project.stickers[i].thumbnail);
+      if (hasChanges) {
+        setLocalStickers(updatedStickers);
+        const updatedProject = { ...project, stickers: updatedStickers };
+        onUpdateProject(updatedProject);
+        await saveProject(updatedProject);
+      }
+    };
+    generateAllThumbnails();
+  }, []);
+
   const isNavigatingBack = useRef(false);
 
   const activeSticker = project.stickers.find(s => s.id === activeStickerId) || project.stickers[0];
@@ -73,9 +181,10 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
 
   const handleSaveComplete = async (thumbnail: string) => {
     if (!thumbnail) return;
-    const updatedStickers = project.stickers.map(s =>
+    const updatedStickers = localStickers.map(s =>
       s.id === activeStickerId ? { ...s, status: 'draft' as const, thumbnail } : s
     );
+    setLocalStickers(updatedStickers); // 更新本地 state
     const updatedProject = { ...project, updatedAt: Date.now(), stickers: updatedStickers, layers: layers };
     await saveProject(updatedProject);
 
@@ -387,20 +496,30 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
 
       {!isZenMode && (
         <div className="h-20 bg-white border-t border-gray-200 flex items-center px-4 gap-3 overflow-x-auto shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] custom-scrollbar z-20">
-          {project.stickers.map((s, i) => (
-            <div
+          {localStickers.map((s, i) => (
+            <motion.div
               key={s.id}
               onClick={() => switchSticker(s.id)}
-              className={`flex-shrink-0 w-14 h-14 bg-gray-50 rounded-lg cursor-pointer border-2 transition-all overflow-hidden ${s.id === activeStickerId ? 'border-slate-800 scale-105 shadow-md' : 'border-gray-100 opacity-60 hover:opacity-100 hover:border-gray-300'}`}
+              className={`flex-shrink-0 w-14 h-14 bg-gray-50 rounded-lg cursor-pointer border-2 overflow-hidden ${s.id === activeStickerId ? 'border-slate-800 shadow-md' : 'border-gray-100'}`}
+              animate={{
+                scale: s.id === activeStickerId ? 1.08 : 1,
+                opacity: s.id === activeStickerId ? 1 : 0.7,
+              }}
+              whileHover={{ scale: 1.1, opacity: 1 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
             >
-              {s.thumbnail ? (
+              {/* 當前選中的貼圖顯示即時預覽 */}
+              {s.id === activeStickerId && livePreview ? (
+                <img src={livePreview} className="w-full h-full object-contain p-1 pointer-events-none" />
+              ) : s.thumbnail ? (
                 <img src={s.thumbnail} className="w-full h-full object-contain p-1 pointer-events-none" key={s.thumbnail} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-bold uppercase">
                   {s.type === 'main' ? 'M' : s.type === 'tab' ? 'T' : i - 1}
                 </div>
               )}
-            </div>
+            </motion.div>
           ))}
         </div>
       )}

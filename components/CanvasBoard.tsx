@@ -146,6 +146,21 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
         onHistoryChange(true, false);
       };
       img.src = url;
+    },
+    getPreview: () => {
+      const temp = document.createElement('canvas');
+      temp.width = width; temp.height = height;
+      const tctx = temp.getContext('2d');
+      if (tctx) {
+        layers.forEach(l => {
+          if (l.visible) {
+            tctx.globalAlpha = l.opacity;
+            const c = canvasRefs.current[l.id];
+            if (c) tctx.drawImage(c, 0, 0, width, height);
+          }
+        });
+      }
+      return temp.toDataURL('image/png', 0.5);
     }
   }), [layers, activeLayerId, width, height]);
 

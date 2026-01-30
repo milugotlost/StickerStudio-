@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { BrushSettings, BrushType } from '../types';
 import {
     Brush, Eraser, Undo, Redo, Trash2, PaintBucket,
@@ -52,6 +53,24 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     const fontInputRef = useRef<HTMLInputElement>(null);
     const [customFonts, setCustomFonts] = useState<string[]>([]);
     const [activeTab, setActiveTab] = useState<'tool' | 'brush' | 'color'>('tool');
+
+    // 顏色歷史記錄（最多 8 個）
+    const [colorHistory, setColorHistory] = useState<string[]>(() => {
+        const saved = localStorage.getItem('stix_color_history');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    // 當顏色改變時，更新歷史
+    useEffect(() => {
+        if (settings.color && settings.tool !== 'eraser') {
+            setColorHistory(prev => {
+                const filtered = prev.filter(c => c !== settings.color);
+                const newHistory = [settings.color, ...filtered].slice(0, 8);
+                localStorage.setItem('stix_color_history', JSON.stringify(newHistory));
+                return newHistory;
+            });
+        }
+    }, [settings.color]);
 
     const handleToolChange = (tool: 'brush' | 'eraser' | 'fill' | 'text') => {
         onChange({ ...settings, tool });
@@ -281,13 +300,33 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 {/* 顏色分頁 */}
                 {activeTab === 'color' && (
                     <div className="space-y-4">
+                        {/* 顏色歷史 */}
+                        {colorHistory.length > 0 && (
+                            <div>
+                                <div className="text-xs text-slate-500 mb-2 font-bold">最近使用</div>
+                                <div className="flex gap-2 flex-wrap">
+                                    {colorHistory.map((c, i) => (
+                                        <motion.button
+                                            key={`${c}-${i}`}
+                                            onClick={() => onChange({ ...settings, color: c })}
+                                            className={`w-8 h-8 rounded-lg border-2 ${settings.color.toLowerCase() === c.toLowerCase() ? 'border-slate-800 scale-110' : 'border-gray-200'}`}
+                                            style={{ backgroundColor: c }}
+                                            whileHover={{ scale: 1.15 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                         <div className="mobile-color-grid">
                             {SWATCHES.map(c => (
-                                <button
+                                <motion.button
                                     key={c}
                                     onClick={() => onChange({ ...settings, color: c })}
                                     className={`mobile-color-btn ${settings.color.toLowerCase() === c.toLowerCase() ? 'active' : ''}`}
                                     style={{ backgroundColor: c }}
+                                    whileHover={{ scale: 1.15 }}
+                                    whileTap={{ scale: 0.9 }}
                                 />
                             ))}
                         </div>

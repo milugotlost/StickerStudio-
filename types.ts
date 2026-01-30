@@ -61,7 +61,8 @@ export interface CanvasHandle {
   canRedo: boolean;
   exportImage: () => Promise<string>;
   drawImageOnLayer: (layerId: string, dataUrl: string) => Promise<void>;
-  save: () => Promise<string>; // New: Returns the thumbnail URL after finishing DB write
+  save: () => Promise<string>;
+  getPreview: () => string; // 新增：取得即時預覽
 }
 
 declare global {
