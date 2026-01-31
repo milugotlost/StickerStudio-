@@ -99,7 +99,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
     <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header - 響應式 */}
-        <header className={`mb-8 sm:mb-10 ${isMobile ? 'flex flex-col gap-4' : 'flex justify-between items-center'}`}>
+        <header className={`mb-8 sm:mb-10 ${isMobile ? 'flex flex-col gap-6 items-center text-center' : 'flex justify-between items-center text-left'}`}>
           <div className="flex items-center gap-3 sm:gap-4">
             <img src="/logo.png" alt="Stix" className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl shadow-sm bg-white shrink-0" />
             <div className="flex flex-col justify-center">
@@ -204,7 +204,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
 
         {/* Footer Version Info */}
         <div className="mt-12 text-center text-xs text-slate-300 font-mono">
-          STIX v2.1.0 (Build 20260131)
+          STIX v2.1.1 (Layout Fixed)
         </div>
       </div>
 
