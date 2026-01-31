@@ -22,8 +22,14 @@ const generateThumbnailForSticker = async (
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
+
+  // Fill white background for thumbnail
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
 
   let hasContent = false;
   for (const layerId of layerIds) {

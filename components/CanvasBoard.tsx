@@ -75,6 +75,10 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
       temp.height = height;
       const tctx = temp.getContext('2d');
       if (tctx) {
+        // Fill white background first
+        tctx.fillStyle = '#ffffff';
+        tctx.fillRect(0, 0, width, height);
+
         for (const l of layers) {
           if (l.visible) {
             tctx.globalAlpha = l.opacity;
