@@ -121,12 +121,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
         className="hidden"
       />
 
-      {/* Top Navigation Bar - Sticky & Solid */}
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
+      {/* Top Navigation Bar - Fixed & Solid */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
         <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
           {/* Brand Logo & Title */}
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Stix" className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+              <img src="/logo.png" alt="Stix" className="w-full h-full object-contain p-1" />
+            </div>
             <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-[#FF6B6B] to-[#FF9A56] bg-clip-text text-transparent leading-none">
               Stix
             </h1>
@@ -158,7 +160,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
         </div>
       </nav>
 
-      <main className="max-w-6xl mx-auto p-4 sm:p-8 pt-6">
+      <main className="max-w-6xl mx-auto p-4 sm:p-8 pt-24 pb-20">
         {/* Mobile Action Bar (Visible only on mobile) */}
         <div className="sm:hidden mb-8 grid grid-cols-2 gap-3">
           <AnimatedButton onClick={() => setShowCreateModal(true)} variant="primary" className="col-span-2 py-3 shadow-md shadow-indigo-100">
@@ -263,7 +265,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
 
         {/* Footer Version Info */}
         <div className="mt-16 text-center text-xs text-slate-300 font-mono pb-8">
-          STIX v2.3.0 (App Shell Upgrade)
+          STIX v2.3.1 (Fixed Layout)
         </div>
       </main>
 
