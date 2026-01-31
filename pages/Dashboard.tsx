@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Project, StickerMetadata } from '../types';
 import { loadProjects, saveProject, deleteProjectData } from '../services/db';
 import { restoreProject } from '../services/backup';
-import { Plus, Trash2, Upload, AtSign } from 'lucide-react';
+import { Plus, Trash2, Upload, AtSign, Download, ImageIcon } from 'lucide-react';
 import { AnimatedButton, AnimatedCard } from '../components/AnimatedComponents';
 
 interface DashboardProps {
@@ -16,6 +16,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
   const [newProjectName, setNewProjectName] = useState('');
   const [stickerCount, setStickerCount] = useState(8);
   const [isImporting, setIsImporting] = useState(false);
+  const [tempTitle, setTempTitle] = useState('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // 手機版檢測
@@ -33,7 +34,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
     setProjects(data.sort((a, b) => b.updatedAt - a.updatedAt));
   };
 
-  const handleImportClick = () => {
+  const handleImport = () => {
     fileInputRef.current?.click();
   };
 
@@ -50,14 +51,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
       }
     } catch (err) {
       console.error(err);
+      alert("匯入失敗，請確認檔案格式是否正確");
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
+  const handleOpenProject = (id: string) => {
+    const project = projects.find(p => p.id === id);
+    if (project) onOpenProject(project);
+  };
+
   const handleCreate = async () => {
-    if (!newProjectName) return;
+    // 優先使用 tempTitle (新 Modal 邏輯) 或 fallback to newProjectName (舊邏輯兼容)
+    const title = tempTitle || newProjectName;
+    if (!title) return;
 
     const stickers: StickerMetadata[] = [
       { id: 'main', index: -1, type: 'main', status: 'empty' },
@@ -72,7 +81,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
 
     const newProject: Project = {
       id: crypto.randomUUID(),
-      name: newProjectName,
+      name: title,
       width: 370,
       height: 320,
       totalStickers: stickerCount,
@@ -83,7 +92,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
 
     await saveProject(newProject);
     setProjects([newProject, ...projects]);
-    setShowModal(false);
+    setShowModal(false); // 關閉舊 Modal
+    setTempTitle(''); // 清空
     onOpenProject(newProject);
   };
 
@@ -95,104 +105,154 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
     }
   }
 
+  // 為了兼容原本的 setShowModal 邏輯，這裡定義一個 setShowCreateModal 其實就是 setShowModal
+  // 但為了對應改寫後的 UI 命名，我們使用 showCreateModal 變數名
+  const showCreateModal = showModal;
+  const setShowCreateModal = setShowModal;
+
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header - 響應式 */}
-        <header className={`mb-6 sm:mb-10 ${isMobile ? 'flex flex-col gap-4' : 'flex justify-between items-center'}`}>
+    <div className="min-h-screen bg-slate-50">
+      {/* 隱藏的檔案輸入框 (功能保留) */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".zip"
+        className="hidden"
+      />
+
+      {/* Top Navigation Bar - Sticky & Solid */}
+      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
+          {/* Brand Logo & Title */}
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Stix" className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-sm bg-white shrink-0" />
-            <div className="flex flex-col">
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-800 leading-tight">
-                <span className="bg-gradient-to-r from-[#FF6B6B] to-[#FF9A56] bg-clip-text text-transparent">Stix</span>
-              </h1>
-              <p className="text-slate-500 text-xs sm:text-sm font-medium">輕鬆製作 LINE 貼圖</p>
-            </div>
+            <img src="/logo.png" alt="Stix" className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg" />
+            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-[#FF6B6B] to-[#FF9A56] bg-clip-text text-transparent leading-none">
+              Stix
+            </h1>
           </div>
-          <div className={`flex gap-2 w-full sm:w-auto ${isMobile ? 'grid grid-cols-2' : 'items-center'}`}>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept=".zip"
-              className="hidden"
-            />
+
+          {/* Desktop Actions */}
+          <div className="hidden sm:flex items-center gap-3">
             <motion.a
               href="https://www.threads.com/@milu_got_lost"
               target="_blank"
               rel="noopener noreferrer"
-              className={`col-span-2 rounded-lg bg-white border border-slate-200 text-slate-600 flex items-center justify-center gap-2 font-bold text-sm ${isMobile ? 'p-2.5' : 'p-2.5 px-4 h-full'}`}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-slate-600 font-medium text-sm hover:bg-slate-200 transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
               <AtSign size={16} />
               <span>聯絡開發者</span>
             </motion.a>
-            <AnimatedButton
-              onClick={handleImportClick}
-              disabled={isImporting}
-              variant="secondary"
-              className="px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base"
-            >
-              <Upload size={18} />
-              {isImporting ? "匯入中..." : "匯入專案"}
+            <div className="h-6 w-px bg-slate-300 mx-1"></div>
+            <AnimatedButton onClick={handleImport} variant="secondary" className="px-5">
+              <Upload size={18} className="mr-2" />
+              匯入
             </AnimatedButton>
-            <AnimatedButton
-              onClick={() => setShowModal(true)}
-              variant="primary"
-              className="px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base"
-            >
-              <Plus size={18} />
+            <AnimatedButton onClick={() => setShowCreateModal(true)} variant="primary" className="px-5 shadow-md shadow-indigo-200">
+              <Plus size={18} className="mr-2" />
               新建專案
             </AnimatedButton>
           </div>
-        </header>
+        </div>
+      </nav>
 
-        {/* 專案列表 - 響應式 */}
-        {projects.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-16 sm:py-20 bg-white rounded-2xl border border-dashed border-slate-300"
+      <main className="max-w-6xl mx-auto p-4 sm:p-8 pt-6">
+        {/* Mobile Action Bar (Visible only on mobile) */}
+        <div className="sm:hidden mb-8 grid grid-cols-2 gap-3">
+          <AnimatedButton onClick={() => setShowCreateModal(true)} variant="primary" className="col-span-2 py-3 shadow-md shadow-indigo-100">
+            <Plus size={18} className="mr-2" />
+            新建貼圖專案
+          </AnimatedButton>
+          <AnimatedButton onClick={handleImport} variant="secondary" className="py-2.5 bg-white border-slate-200">
+            <Upload size={18} className="mr-2" />
+            匯入專案
+          </AnimatedButton>
+          <motion.a
+            href="https://www.threads.com/@milu_got_lost"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 font-medium text-sm"
+            whileTap={{ scale: 0.97 }}
           >
-            <p className="text-slate-400 text-base sm:text-lg">目前沒有專案。立即建立一個吧！</p>
-          </motion.div>
+            <AtSign size={16} />
+            聯絡開發者
+          </motion.a>
+        </div>
+
+        {/* Projects Grid */}
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-700">我的專案</h2>
+          <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-md">{projects.length} 個專案</span>
+        </div>
+
+        {projects.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 gap-4 mt-4">
+            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-2">
+              <ImageIcon size={32} className="opacity-50" />
+            </div>
+            <p>還沒有貼圖專案，開始創作吧！</p>
+            <AnimatedButton
+              onClick={() => setShowCreateModal(true)}
+              variant="primary"
+              className="mt-2"
+            >
+              <Plus size={18} className="mr-2" />
+              立即新增
+            </AnimatedButton>
+          </div>
         ) : (
-          <div className={`grid gap-4 sm:gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
-            {projects.map((project, index) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {projects.map((project) => (
               <motion.div
                 key={project.id}
-                onClick={() => onOpenProject(project)}
-                className="bg-white rounded-xl shadow-sm hover:shadow-xl border border-slate-200 cursor-pointer overflow-hidden group"
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                whileHover={{ scale: 1.02, y: -4 }}
-                whileTap={{ scale: 0.98 }}
+                layoutId={project.id}
+                onClick={() => handleOpenProject(project.id)}
+                className="bg-white rounded-2xl p-4 cursor-pointer hover:shadow-xl transition-all border border-slate-100 group relative overflow-hidden"
+                whileHover={{ y: -4 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
               >
-                <div className="h-32 sm:h-40 bg-slate-100 flex items-center justify-center relative">
-                  <div className="grid grid-cols-4 gap-1 p-4 opacity-50">
-                    {project.stickers.filter(s => s.type === 'regular').slice(0, 8).map((s, i) => (
-                      <div key={i} className="w-6 sm:w-8 h-6 sm:h-8 bg-white rounded-sm border border-slate-200 overflow-hidden">
-                        {s.thumbnail && <img src={s.thumbnail} alt="" className="w-full h-full object-contain" />}
+                <div className="aspect-[4/3] bg-slate-50 rounded-xl mb-4 overflow-hidden relative border border-slate-100 flex items-center justify-center">
+                  <div className="grid grid-cols-4 gap-1 p-4 w-full h-full opacity-60 scale-90 group-hover:scale-100 transition-transform duration-500">
+                    {project.stickers.slice(0, 8).map((s, i) => (
+                      <div key={i} className="aspect-square bg-white rounded-md shadow-sm border border-slate-100 overflow-hidden flex items-center justify-center">
+                        {s.thumbnail ? (
+                          <img src={s.thumbnail} className="w-full h-full object-contain p-0.5" alt="" />
+                        ) : (
+                          <span className="text-[10px] text-slate-300">
+                            {s.type === 'main' ? '主' : s.type === 'tab' ? '標' : i + 1}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <span className="bg-white/90 text-slate-700 px-4 py-2 rounded-full font-bold text-sm shadow-sm backdrop-blur-sm">
+                      開啟專案
+                    </span>
+                  </div>
                 </div>
-                <div className="p-4 sm:p-5">
-                  <div className="flex justify-between items-start">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-bold text-base sm:text-lg text-slate-800 truncate">{project.name}</h3>
-                      <p className="text-xs sm:text-sm text-slate-500">{project.totalStickers} 張貼圖 • {new Date(project.updatedAt).toLocaleDateString()}</p>
-                    </div>
+
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-slate-800 text-lg mb-1 group-hover:text-indigo-600 transition-colors line-clamp-1">{project.name}</h3>
+                    <p className="text-slate-400 text-xs flex items-center gap-1">
+                      {project.stickers.length} 張貼圖 • {new Date(project.updatedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <motion.button
                       onClick={(e) => handleDelete(e, project.id)}
-                      className="text-slate-300 hover:text-red-500 p-2 shrink-0"
-                      whileHover={{ scale: 1.2 }}
+                      className="text-slate-300 hover:text-red-500 p-2 shrink-0 bg-slate-50 rounded-full"
+                      whileHover={{ scale: 1.1, backgroundColor: "#FEF2F2", color: "#EF4444" }}
                       whileTap={{ scale: 0.9 }}
+                      title="刪除"
                     >
-                      <Trash2 size={18} />
+                      <Trash2 size={16} />
                     </motion.button>
                   </div>
                 </div>
@@ -202,61 +262,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
         )}
 
         {/* Footer Version Info */}
-        <div className="mt-12 text-center text-xs text-slate-300 font-mono">
-          STIX v2.2.2 (Final Fix)
+        <div className="mt-16 text-center text-xs text-slate-300 font-mono pb-8">
+          STIX v2.3.0 (App Shell Upgrade)
         </div>
-      </div>
+      </main>
 
       {/* Modal - 響應式 + 動畫 */}
       <AnimatePresence>
-        {showModal && (
+        {showCreateModal && (
           <motion.div
-            className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowModal(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4"
+            onClick={() => setShowCreateModal(false)}
           >
             <motion.div
-              className={`bg-white w-full sm:max-w-md shadow-2xl text-left ${isMobile ? 'rounded-t-2xl p-6' : 'rounded-2xl p-8'}`}
-              initial={{ opacity: 0, y: isMobile ? 100 : 30, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: isMobile ? 100 : 30, scale: 0.95 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
               onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm"
             >
-              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-slate-800">建立新專案</h2>
+              <h2 className="text-xl font-bold mb-4 text-slate-800">建立新專案</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">專案名稱</label>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">標題</label>
                   <input
                     type="text"
-                    className="w-full border border-slate-300 bg-white text-slate-900 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none text-base"
-                    placeholder="例如：我的原創貼圖"
-                    value={newProjectName}
-                    onChange={(e) => setNewProjectName(e.target.value)}
+                    value={tempTitle}
+                    onChange={(e) => setTempTitle(e.target.value)}
+                    placeholder="請輸入貼圖標題..."
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-base"
                     autoFocus
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">貼圖數量</label>
-                  <select
-                    value={stickerCount}
-                    onChange={(e) => setStickerCount(Number(e.target.value))}
-                    className="w-full border border-slate-300 bg-white text-slate-900 rounded-lg p-3 text-base"
-                  >
-                    {[8, 16, 24, 32, 40].map((num) => (
-                      <option key={num} value={num}>
-                        {num} 張貼圖
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
-              <div className="flex gap-3 mt-6 sm:mt-8">
+              <div className="flex justify-end gap-3 mt-8">
                 <AnimatedButton
-                  onClick={() => setShowModal(false)}
-                  variant="ghost"
+                  onClick={() => setShowCreateModal(false)}
+                  variant="secondary"
                   className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium"
                 >
                   取消
