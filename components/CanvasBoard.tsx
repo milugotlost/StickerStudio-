@@ -166,7 +166,7 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
       }
       return temp.toDataURL('image/png', 0.5);
     }
-  }), [layers, activeLayerId, width, height]);
+  }), [layers, activeLayerId, width, height, onSaveComplete, settings, projectId, stickerIndex]);
 
   useEffect(() => {
     let active = true;

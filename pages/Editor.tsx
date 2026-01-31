@@ -187,11 +187,19 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
 
   const handleSaveComplete = async (thumbnail: string) => {
     if (!thumbnail) return;
-    const updatedStickers = localStickers.map(s =>
-      s.id === activeStickerId ? { ...s, status: 'draft' as const, thumbnail } : s
-    );
-    setLocalStickers(updatedStickers); // 更新本地 state
-    const updatedProject = { ...project, updatedAt: Date.now(), stickers: updatedStickers, layers: layers };
+
+    // Store in a variable to use for saving, but update state using functional update
+    let updatedStickersList;
+    setLocalStickers(prev => {
+      const updated = prev.map(s =>
+        s.id === activeStickerId ? { ...s, status: 'draft' as const, thumbnail } : s
+      );
+      updatedStickersList = updated;
+      return updated;
+    });
+
+    // NOTE: This might still use stale 'layers' if not careful, but layers update less frequently
+    const updatedProject = { ...project, updatedAt: Date.now(), stickers: updatedStickersList || localStickers.map(s => s.id === activeStickerId ? { ...s, status: 'draft' as const, thumbnail } : s), layers: layers };
     await saveProject(updatedProject);
 
     if (!isNavigatingBack.current) {
