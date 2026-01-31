@@ -254,7 +254,9 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
                 onClick={() => switchSticker(s.id)}
                 className={`mobile-sticker-item ${s.id === activeStickerId ? 'active' : ''}`}
               >
-                {s.thumbnail ? (
+                {s.id === activeStickerId && livePreview ? (
+                  <img src={livePreview} className="w-full h-full object-contain p-1 pointer-events-none" />
+                ) : s.thumbnail ? (
                   <img src={s.thumbnail} className="w-full h-full object-contain p-1" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-bold">
@@ -358,7 +360,9 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
                   onClick={() => { switchSticker(s.id); closeMobilePanel(); }}
                   className={`aspect-square rounded-xl border-2 overflow-hidden cursor-pointer transition-all ${s.id === activeStickerId ? 'border-slate-800 shadow-lg scale-105' : 'border-gray-200 opacity-70'}`}
                 >
-                  {s.thumbnail ? (
+                  {s.id === activeStickerId && livePreview ? (
+                    <img src={livePreview} className="w-full h-full object-contain p-1 pointer-events-none" />
+                  ) : s.thumbnail ? (
                     <img src={s.thumbnail} className="w-full h-full object-contain p-1" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 font-bold bg-gray-50">
