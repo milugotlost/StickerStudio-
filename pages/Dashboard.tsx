@@ -203,7 +203,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
 
         {/* Footer Version Info */}
         <div className="mt-12 text-center text-xs text-slate-300 font-mono">
-          STIX v2.1.1 (Layout Fixed)
+          STIX v2.2.2 (Final Fix)
         </div>
       </div>
 
