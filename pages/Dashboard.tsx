@@ -99,15 +99,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
     <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header - 響應式 */}
-        <header className={`mb-8 sm:mb-10 ${isMobile ? 'space-y-4' : 'flex justify-between items-center'}`}>
-          <div>
+        <header className={`mb-8 sm:mb-10 ${isMobile ? 'flex flex-col gap-4' : 'flex justify-between items-center'}`}>
+          <div className="flex flex-col">
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 flex items-center gap-2">
-              <img src="/logo.png" alt="Stix" className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg shadow-sm" />
-              <span className="bg-gradient-to-r from-[#FF6B6B] to-[#FF9A56] bg-clip-text text-transparent">Stix</span>
+              <img src="/logo.png" alt="Stix" className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg shadow-sm" />
+              <div className="flex flex-col justify-center">
+                <span className="bg-gradient-to-r from-[#FF6B6B] to-[#FF9A56] bg-clip-text text-transparent leading-none">Stix</span>
+              </div>
             </h1>
-            <p className="text-slate-500 mt-1 sm:mt-2 text-sm sm:text-base">輕鬆製作 LINE 貼圖</p>
+            <p className="text-slate-500 mt-1 sm:mt-2 text-sm sm:text-base ml-12 sm:ml-14 -mt-1">輕鬆製作 LINE 貼圖</p>
           </div>
-          <div className={`flex gap-2 sm:gap-3 ${isMobile ? 'flex-col' : 'items-center'}`}>
+          <div className={`flex gap-3 ${isMobile ? 'flex-col' : 'items-center'}`}>
             <input
               type="file"
               ref={fileInputRef}
@@ -119,12 +121,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
               href="https://www.threads.com/@milu_got_lost"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2.5 sm:p-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors flex items-center justify-center"
-              whileHover={{ scale: 1.1 }}
+              className={`rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors flex items-center gap-2 font-bold text-sm ${isMobile ? 'w-full justify-center p-3' : 'p-3'}`}
+              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               title="追蹤我 (Threads)"
             >
               <AtSign size={18} />
+              <span>聯絡開發者</span>
             </motion.a>
             <AnimatedButton
               onClick={handleImportClick}

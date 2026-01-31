@@ -255,9 +255,9 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
                 className={`mobile-sticker-item ${s.id === activeStickerId ? 'active' : ''}`}
               >
                 {s.id === activeStickerId && livePreview ? (
-                  <img src={livePreview} className="w-full h-full object-contain p-1 pointer-events-none" />
+                  <img src={livePreview} className="w-full h-full object-contain p-1 pointer-events-none" alt="Preview" />
                 ) : s.thumbnail ? (
-                  <img src={s.thumbnail} className="w-full h-full object-contain p-1" />
+                  <img src={s.thumbnail} key={s.thumbnail} className="w-full h-full object-contain p-1" alt={`Sticker ${i + 1}`} />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-bold">
                     {s.type === 'main' ? 'M' : s.type === 'tab' ? 'T' : i - 1}
@@ -361,9 +361,9 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
                   className={`aspect-square rounded-xl border-2 overflow-hidden cursor-pointer transition-all ${s.id === activeStickerId ? 'border-slate-800 shadow-lg scale-105' : 'border-gray-200 opacity-70'}`}
                 >
                   {s.id === activeStickerId && livePreview ? (
-                    <img src={livePreview} className="w-full h-full object-contain p-1 pointer-events-none" />
+                    <img src={livePreview} className="w-full h-full object-contain p-1 pointer-events-none" alt="Preview" />
                   ) : s.thumbnail ? (
-                    <img src={s.thumbnail} className="w-full h-full object-contain p-1" />
+                    <img src={s.thumbnail} key={s.thumbnail} className="w-full h-full object-contain p-1" alt={`Sticker ${i + 1}`} />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 font-bold bg-gray-50">
                       {s.type === 'main' ? 'M' : s.type === 'tab' ? 'T' : i - 1}
