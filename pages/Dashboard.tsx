@@ -268,59 +268,59 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
           STIX v2.3.2 (Scroll Container Fix)
         </div>
       </main>
-    </div>
 
-      {/* Modal - 響應式 + 動畫 */ }
-  <AnimatePresence>
-    {showCreateModal && (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4"
-        onClick={() => setShowCreateModal(false)}
-      >
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 10 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 10 }}
-          onClick={(e) => e.stopPropagation()}
-          className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm"
-        >
-          <h2 className="text-xl font-bold mb-4 text-slate-800">建立新專案</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">標題</label>
-              <input
-                type="text"
-                value={tempTitle}
-                onChange={(e) => setTempTitle(e.target.value)}
-                placeholder="請輸入貼圖標題..."
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-base"
-                autoFocus
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 mt-8">
-            <AnimatedButton
-              onClick={() => setShowCreateModal(false)}
-              variant="secondary"
-              className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium"
+
+      {/* Modal - 響應式 + 動畫 */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4"
+            onClick={() => setShowCreateModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm"
             >
-              取消
-            </AnimatedButton>
-            <AnimatedButton
-              onClick={handleCreate}
-              variant="primary"
-              className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 font-medium shadow-md"
-            >
-              建立
-            </AnimatedButton>
-          </div>
-        </motion.div>
-      </motion.div>
-    )}
-  </AnimatePresence>
+              <h2 className="text-xl font-bold mb-4 text-slate-800">建立新專案</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">標題</label>
+                  <input
+                    type="text"
+                    value={tempTitle}
+                    onChange={(e) => setTempTitle(e.target.value)}
+                    placeholder="請輸入貼圖標題..."
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-base"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-8">
+                <AnimatedButton
+                  onClick={() => setShowCreateModal(false)}
+                  variant="secondary"
+                  className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium"
+                >
+                  取消
+                </AnimatedButton>
+                <AnimatedButton
+                  onClick={handleCreate}
+                  variant="primary"
+                  className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 font-medium shadow-md"
+                >
+                  建立
+                </AnimatedButton>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div >
   );
 };
