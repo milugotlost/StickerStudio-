@@ -101,12 +101,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
         {/* Header - 響應式 */}
         <header className={`mb-8 sm:mb-10 ${isMobile ? 'flex flex-col gap-4' : 'flex justify-between items-center'}`}>
           <div className="flex items-center gap-3 sm:gap-4">
-            <img src="/logo.png" alt="Stix" className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl shadow-sm bg-white" />
+            <img src="/logo.png" alt="Stix" className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl shadow-sm bg-white shrink-0" />
             <div className="flex flex-col justify-center">
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 leading-tight">
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 leading-tight whitespace-nowrap">
                 <span className="bg-gradient-to-r from-[#FF6B6B] to-[#FF9A56] bg-clip-text text-transparent">Stix</span>
               </h1>
-              <p className="text-slate-500 text-sm font-medium">輕鬆製作 LINE 貼圖</p>
+              <p className="text-slate-500 text-sm font-medium whitespace-nowrap">輕鬆製作 LINE 貼圖</p>
             </div>
           </div>
           <div className={`flex gap-3 ${isMobile ? 'flex-col sm:flex-row' : 'items-center'}`}>
@@ -201,6 +201,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
             ))}
           </div>
         )}
+
+        {/* Footer Version Info */}
+        <div className="mt-12 text-center text-xs text-slate-300 font-mono">
+          STIX v2.1.0 (Build 20260131)
+        </div>
       </div>
 
       {/* Modal - 響應式 + 動畫 */}
