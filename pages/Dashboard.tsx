@@ -100,16 +100,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
       <div className="max-w-6xl mx-auto">
         {/* Header - 響應式 */}
         <header className={`mb-8 sm:mb-10 ${isMobile ? 'flex flex-col gap-4' : 'flex justify-between items-center'}`}>
-          <div className="flex flex-col">
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 flex items-center gap-2">
-              <img src="/logo.png" alt="Stix" className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg shadow-sm" />
-              <div className="flex flex-col justify-center">
-                <span className="bg-gradient-to-r from-[#FF6B6B] to-[#FF9A56] bg-clip-text text-transparent leading-none">Stix</span>
-              </div>
-            </h1>
-            <p className="text-slate-500 mt-1 sm:mt-2 text-sm sm:text-base ml-12 sm:ml-14 -mt-1">輕鬆製作 LINE 貼圖</p>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <img src="/logo.png" alt="Stix" className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl shadow-sm bg-white" />
+            <div className="flex flex-col justify-center">
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 leading-tight">
+                <span className="bg-gradient-to-r from-[#FF6B6B] to-[#FF9A56] bg-clip-text text-transparent">Stix</span>
+              </h1>
+              <p className="text-slate-500 text-sm font-medium">輕鬆製作 LINE 貼圖</p>
+            </div>
           </div>
-          <div className={`flex gap-3 ${isMobile ? 'flex-col' : 'items-center'}`}>
+          <div className={`flex gap-3 ${isMobile ? 'flex-col sm:flex-row' : 'items-center'}`}>
             <input
               type="file"
               ref={fileInputRef}

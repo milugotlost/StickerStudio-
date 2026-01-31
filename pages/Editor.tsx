@@ -248,7 +248,7 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
         {/* 手機版貼圖選擇器 (頂部 strip) */}
         {!isZenMode && (
           <div className="mobile-sticker-strip shrink-0">
-            {project.stickers.map((s, i) => (
+            {localStickers.map((s, i) => (
               <div
                 key={s.id}
                 onClick={() => switchSticker(s.id)}
@@ -354,7 +354,7 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
             <div className="mobile-sheet-handle" />
             <h3 className="text-sm font-bold text-gray-700 mb-3">選擇貼圖</h3>
             <div className="grid grid-cols-5 gap-3">
-              {project.stickers.map((s, i) => (
+              {localStickers.map((s, i) => (
                 <div
                   key={s.id}
                   onClick={() => { switchSticker(s.id); closeMobilePanel(); }}
