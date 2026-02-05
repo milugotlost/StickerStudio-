@@ -1,5 +1,11 @@
 /* Stix 基礎樣式 */
 
+/* Safe Area for Android/iOS status bar */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 24px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* 自訂滾動條 */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;

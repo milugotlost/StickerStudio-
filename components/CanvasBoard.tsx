@@ -13,6 +13,7 @@ interface CanvasBoardProps {
   stickerIndex: number;
   onSaveComplete: (thumbnail: string) => void;
   onHistoryChange: (canUndo: boolean, canRedo: boolean) => void;
+  onColorPick?: (color: string) => void;  // 長按吸色回調
 }
 
 interface HistoryStep {
@@ -36,7 +37,7 @@ const hexToRgb = (hex: string) => {
 };
 
 export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
-  width, height, layers, activeLayerId, settings, projectId, stickerIndex, onSaveComplete, onHistoryChange
+  width, height, layers, activeLayerId, settings, projectId, stickerIndex, onSaveComplete, onHistoryChange, onColorPick
 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRefs = useRef<{ [key: string]: HTMLCanvasElement | null }>({});
@@ -48,6 +49,11 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
   const currentHistoryStart = useRef<ImageData | null>(null);
   const undoStack = useRef<HistoryStep[]>([]);
   const redoStack = useRef<HistoryStep[]>([]);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
+  const [isEyedropping, setIsEyedropping] = useState(false);
+  const [hoverColor, setHoverColor] = useState<string | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
 
   // Use local refs to ensure the save logic always uses the ID/Index present when it was triggered
   const currentInfoRef = useRef({ projectId, stickerIndex });
@@ -241,9 +247,62 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
 
   const startDraw = (e: React.PointerEvent) => {
     if (settings.tool === 'text') return;
+    const { x, y } = getCoords(e);
+
+    // 吸色器工具 - 立即吸色
+    if (settings.tool === 'eyedropper' && onColorPick) {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = width;
+      tempCanvas.height = height;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (tempCtx) {
+        layers.forEach(l => {
+          if (l.visible) {
+            tempCtx.globalAlpha = l.opacity;
+            const c = canvasRefs.current[l.id];
+            if (c) tempCtx.drawImage(c, 0, 0);
+          }
+        });
+        const px = Math.floor(x);
+        const py = Math.floor(y);
+        const pixel = tempCtx.getImageData(px, py, 1, 1).data;
+        const hex = `#${pixel[0].toString(16).padStart(2, '0')}${pixel[1].toString(16).padStart(2, '0')}${pixel[2].toString(16).padStart(2, '0')}`;
+        onColorPick(hex);
+      }
+      return;
+    }
+
     const ctx = canvasRefs.current[activeLayerId]?.getContext('2d');
     if (!ctx) return;
-    const { x, y } = getCoords(e);
+
+    // 長按吸色偵測（500ms）- 作為備用方式
+    longPressPosRef.current = { x, y };
+    if (onColorPick) {
+      longPressTimerRef.current = setTimeout(() => {
+        if (longPressPosRef.current) {
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = width;
+          tempCanvas.height = height;
+          const tempCtx = tempCanvas.getContext('2d');
+          if (tempCtx) {
+            layers.forEach(l => {
+              if (l.visible) {
+                tempCtx.globalAlpha = l.opacity;
+                const c = canvasRefs.current[l.id];
+                if (c) tempCtx.drawImage(c, 0, 0);
+              }
+            });
+            const px = Math.floor(longPressPosRef.current.x);
+            const py = Math.floor(longPressPosRef.current.y);
+            const pixel = tempCtx.getImageData(px, py, 1, 1).data;
+            const hex = `#${pixel[0].toString(16).padStart(2, '0')}${pixel[1].toString(16).padStart(2, '0')}${pixel[2].toString(16).padStart(2, '0')}`;
+            onColorPick(hex);
+            setIsEyedropping(true);
+          }
+        }
+      }, 500);
+    }
+
     currentHistoryStart.current = ctx.getImageData(0, 0, width, height);
     if (settings.tool === 'fill') {
       const after = floodFill(x, y, settings.color, settings.opacity);
@@ -277,8 +336,46 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
 
   const onMove = (e: React.PointerEvent) => {
     if (isDraggingText) { setTextPos(getCoords(e)); return; }
-    if (!isDrawing) return;
+
     const { x, y } = getCoords(e);
+
+    // 吸色器模式：即時追蹤游標下的顏色
+    if (settings.tool === 'eyedropper') {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) {
+        setHoverPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      }
+      // 取樣顏色
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = width;
+      tempCanvas.height = height;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (tempCtx) {
+        layers.forEach(l => {
+          if (l.visible) {
+            tempCtx.globalAlpha = l.opacity;
+            const c = canvasRefs.current[l.id];
+            if (c) tempCtx.drawImage(c, 0, 0);
+          }
+        });
+        const px = Math.floor(x);
+        const py = Math.floor(y);
+        if (px >= 0 && px < width && py >= 0 && py < height) {
+          const pixel = tempCtx.getImageData(px, py, 1, 1).data;
+          const hex = `#${pixel[0].toString(16).padStart(2, '0')}${pixel[1].toString(16).padStart(2, '0')}${pixel[2].toString(16).padStart(2, '0')}`;
+          setHoverColor(hex);
+        }
+      }
+      return;
+    }
+
+    // 離開吸色模式時清除 hover 狀態
+    if (hoverColor) {
+      setHoverColor(null);
+      setHoverPos(null);
+    }
+
+    if (!isDrawing) return;
     let tx = x, ty = y;
     if (settings.stabilization > 0 && lastStablePoint.current) {
       const f = 1 - (settings.stabilization * 0.08);
@@ -291,6 +388,20 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
   };
 
   const stopDraw = () => {
+    // 清除長按 timer
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressPosRef.current = null;
+
+    // 如果正在吸色，不寫入歷史
+    if (isEyedropping) {
+      setIsEyedropping(false);
+      setIsDrawing(false);
+      return;
+    }
+
     if (isDrawing) {
       setIsDrawing(false);
       const ctx = canvasRefs.current[activeLayerId]?.getContext('2d');
@@ -336,12 +447,41 @@ export const CanvasBoard = forwardRef<CanvasHandle, CanvasBoardProps>(({
       <div
         ref={containerRef}
         className="relative bg-white shadow-2xl checkerboard-bg"
-        style={{ width: '90vmin', aspectRatio: `${width}/${height}`, touchAction: 'none' }}
-        onPointerDown={startDraw} onPointerMove={onMove} onPointerUp={stopDraw} onPointerLeave={stopDraw}
+        style={{
+          width: '90vmin',
+          aspectRatio: `${width}/${height}`,
+          touchAction: 'none',
+          cursor: settings.tool === 'eyedropper' ? 'crosshair' : 'default'
+        }}
+        onPointerDown={startDraw} onPointerMove={onMove} onPointerUp={stopDraw} onPointerLeave={() => { stopDraw(); setHoverColor(null); setHoverPos(null); }}
       >
         {layers.map(l => (
           <canvas key={l.id} ref={el => canvasRefs.current[l.id] = el} width={width} height={height} className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: l.visible ? l.opacity : 0 }} />
         ))}
+
+        {/* 吸色器游標預覽 */}
+        {settings.tool === 'eyedropper' && hoverColor && hoverPos && (
+          <div
+            className="absolute pointer-events-none z-50"
+            style={{
+              left: hoverPos.x,
+              top: hoverPos.y - 60,
+              transform: 'translateX(-50%)'
+            }}
+          >
+            <div className="flex flex-col items-center">
+              <div
+                className="w-12 h-12 rounded-xl shadow-lg border-4 border-white"
+                style={{ backgroundColor: hoverColor }}
+              />
+              <div className="mt-1 px-2 py-0.5 bg-slate-900/90 text-white text-[10px] font-mono font-bold rounded">
+                {hoverColor.toUpperCase()}
+              </div>
+              <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-slate-900/90" />
+            </div>
+          </div>
+        )}
+
         {settings.tool === 'text' && settings.text.content && (
           <div className="absolute origin-center flex flex-col items-center group pointer-events-none" style={{ left: `${(textPos.x / width) * 100}%`, top: `${(textPos.y / height) * 100}%`, transform: 'translate(-50%, -50%)' }}>
             <div

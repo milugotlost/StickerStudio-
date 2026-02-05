@@ -4,7 +4,7 @@ import { BrushSettings, BrushType } from '../types';
 import {
     Brush, Eraser, Undo, Redo, Trash2, PaintBucket,
     PenTool, Highlighter, SprayCan, Pencil, Minus, Type, Feather,
-    ChevronLeft, ChevronRight, Image as ImageIcon, Upload
+    ChevronLeft, ChevronRight, Image as ImageIcon, Upload, Pipette
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -334,8 +334,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                             <input type="color" value={settings.color} onChange={(e) => onChange({ ...settings, color: e.target.value })} className="w-12 h-12 cursor-pointer border-0 p-0 rounded-lg" />
                             <span className="text-sm font-mono text-slate-600 font-bold">{settings.color.toUpperCase()}</span>
                             <div className="flex-1" />
+                            {/* 吸色器按鈕 */}
+                            <button
+                                onClick={() => onChange({ ...settings, tool: 'eyedropper' })}
+                                className={`p-3 rounded-xl transition-all ${settings.tool === 'eyedropper' ? 'bg-blue-500 text-white shadow-lg scale-105' : 'bg-white text-slate-600 border border-gray-200'}`}
+                                title="吸色器"
+                            >
+                                <Pipette size={20} />
+                            </button>
                             <div className="w-12 h-12 rounded-lg border-2 border-gray-200" style={{ backgroundColor: settings.color }} />
                         </div>
+                        {settings.tool === 'eyedropper' && (
+                            <div className="text-xs text-center text-blue-500 py-2 bg-blue-50 rounded-lg font-bold">
+                                💧 點擊畫布任意位置吸取顏色
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -482,9 +495,22 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                             ))}
                         </div>
                         {!collapsed && (
-                            <div className="flex items-center gap-3 p-2 bg-white border border-gray-200 rounded-lg shadow-sm">
+                            <div className="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded-lg shadow-sm">
                                 <input type="color" value={settings.color} onChange={(e) => onChange({ ...settings, color: e.target.value })} className="w-10 h-10 cursor-pointer border-0 p-0 overflow-hidden" />
                                 <span className="text-xs font-mono text-slate-600 font-bold">{settings.color.toUpperCase()}</span>
+                                <div className="flex-1" />
+                                <button
+                                    onClick={() => onChange({ ...settings, tool: 'eyedropper' })}
+                                    className={`p-2 rounded-lg transition-all ${settings.tool === 'eyedropper' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-slate-600 hover:bg-gray-200'}`}
+                                    title="吸色器"
+                                >
+                                    <Pipette size={16} />
+                                </button>
+                            </div>
+                        )}
+                        {settings.tool === 'eyedropper' && !collapsed && (
+                            <div className="text-[10px] text-center text-blue-500 py-1.5 bg-blue-50 rounded-lg font-bold">
+                                💧 點擊畫布吸取顏色
                             </div>
                         )}
                     </div>

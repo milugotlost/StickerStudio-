@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Stix</string>
+    <string name="title_activity_main">Stix</string>
+    <string name="package_name">com.milugotlost.stix</string>
+    <string name="custom_url_scheme">com.milugotlost.stix</string>
+</resources>

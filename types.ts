@@ -47,7 +47,7 @@ export interface BrushSettings {
   color: string;
   size: number;
   opacity: number;
-  tool: 'brush' | 'eraser' | 'fill' | 'text';
+  tool: 'brush' | 'eraser' | 'fill' | 'text' | 'eyedropper';
   brushType: BrushType;
   stabilization: number;
   text: TextSettings;

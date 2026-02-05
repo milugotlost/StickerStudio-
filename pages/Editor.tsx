@@ -6,7 +6,7 @@ import { exportProjectToZip } from '../services/export';
 import { Toolbar } from '../components/Toolbar';
 import { LayerPanel } from '../components/LayerPanel';
 import { CanvasBoard } from '../components/CanvasBoard';
-import { ChevronLeft, ArrowLeft, ArrowRight, Download, Maximize2, Minimize2, Loader2, Archive, Palette, Layers, Image as ImageIcon, Undo, Redo } from 'lucide-react';
+import { ChevronLeft, ArrowLeft, ArrowRight, Download, Maximize2, Minimize2, Loader2, Archive, Palette, Layers, Image as ImageIcon, Undo, Redo, Check, Cloud } from 'lucide-react';
 import { backupProject } from '../services/backup';
 
 // 為指定貼圖生成縮圖
@@ -89,6 +89,9 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
   const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false);
   const [isLayerPanelCollapsed, setIsLayerPanelCollapsed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [pickedColor, setPickedColor] = useState<string | null>(null); // 吸色視覺回饋
 
   // 本地管理 stickers 以確保縮圖更新後 UI 會重新渲染
   const [localStickers, setLocalStickers] = useState(project.stickers);
@@ -228,12 +231,33 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
 
   const closeMobilePanel = () => setMobilePanel('none');
 
+  // 自動儲存觸發器（3 秒 debounce）
+  const triggerAutoSave = () => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    setSaveStatus('idle');
+    autoSaveTimerRef.current = setTimeout(async () => {
+      if (canvasRef.current && !isSaving) {
+        setSaveStatus('saving');
+        await canvasRef.current.save();
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      }
+    }, 3000);
+  };
+
+  // 清理 timer
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, []);
+
   // ==================== 手機版介面 ====================
   if (isMobile) {
     return (
       <div className="flex flex-col h-screen bg-gray-100 font-sans no-select">
         {/* 手機版 Header */}
-        <header className="mobile-header shrink-0">
+        <header className="mobile-header shrink-0" style={{ paddingTop: 'var(--safe-area-top, 0px)' }}>
           <div className="flex items-center gap-2">
             <button onClick={handleGoBack} className="touch-target text-gray-600">
               <ChevronLeft size={24} />
@@ -241,6 +265,33 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
             <div className="bg-slate-800 text-white px-2 py-0.5 rounded text-xs font-bold">
               {activeSticker.type === 'main' ? 'M' : activeSticker.type === 'tab' ? 'T' : activeStickerIndex - 1}
             </div>
+            {/* 當前顏色指示器 + 顏色選擇器 */}
+            <label
+              className="w-7 h-7 rounded-full border-2 border-white shadow-md cursor-pointer active:scale-95 transition-transform relative overflow-hidden"
+              style={{ backgroundColor: brushSettings.color }}
+            >
+              <input
+                type="color"
+                value={brushSettings.color}
+                onChange={(e) => setBrushSettings(prev => ({ ...prev, color: e.target.value }))}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              />
+            </label>
+            {saveStatus !== 'idle' && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${saveStatus === 'saving' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'
+                  }`}
+              >
+                {saveStatus === 'saving' ? (
+                  <><Loader2 size={12} className="animate-spin" /> 儲存中</>
+                ) : (
+                  <><Check size={12} /> 已儲存</>
+                )}
+              </motion.div>
+            )}
           </div>
 
           <div className="flex items-center gap-1">
@@ -282,6 +333,39 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
           </div>
         )}
 
+        {/* 吸色成功提示 Toast - 增強版 */}
+        {pickedColor && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{
+              opacity: 1,
+              scale: [1, 1.05, 1],
+              transition: { duration: 0.3 }
+            }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] flex flex-col items-center gap-3 bg-slate-900/95 backdrop-blur-xl px-8 py-6 rounded-3xl shadow-2xl"
+            style={{
+              boxShadow: `0 0 60px ${pickedColor}80, 0 25px 50px -12px rgba(0,0,0,0.5)`
+            }}
+          >
+            <motion.div
+              animate={{
+                boxShadow: [
+                  `0 0 0 0 ${pickedColor}`,
+                  `0 0 0 20px ${pickedColor}00`,
+                ]
+              }}
+              transition={{ duration: 0.6, repeat: 1 }}
+              className="w-20 h-20 rounded-2xl ring-4 ring-white/30"
+              style={{ backgroundColor: pickedColor }}
+            />
+            <div className="flex flex-col items-center">
+              <span className="text-xs text-gray-400 font-bold tracking-wider">已吸取顏色</span>
+              <span className="text-2xl font-mono font-bold text-white">{pickedColor.toUpperCase()}</span>
+            </div>
+          </motion.div>
+        )}
+
         {/* Canvas 區域 */}
         <div className="flex-1 overflow-hidden relative" style={{ paddingBottom: isZenMode ? 0 : '56px' }}>
           <CanvasBoard
@@ -294,7 +378,12 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
             projectId={project.id}
             stickerIndex={activeStickerIndex}
             onSaveComplete={handleSaveComplete}
-            onHistoryChange={(u, r) => { setCanUndo(u); setCanRedo(r); }}
+            onHistoryChange={(u, r) => { setCanUndo(u); setCanRedo(r); if (u) triggerAutoSave(); }}
+            onColorPick={(color) => {
+              setBrushSettings(prev => ({ ...prev, color, tool: prev.tool === 'eyedropper' ? 'brush' : prev.tool }));
+              setPickedColor(color);
+              setTimeout(() => setPickedColor(null), 1500);
+            }}
           />
         </div>
 
@@ -409,9 +498,22 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
           <div className="h-6 w-[1px] bg-gray-200 mx-1"></div>
 
           <div className="flex items-center gap-2">
-            <div className="bg-slate-800 text-white px-2.5 py-1 rounded-md font-mono text-xs font-bold">
+            <div className="bg-slate-800 text-white px-2.5 py-1 rounded-md font-mono text-xs font-bold" title="當前貼圖編號">
               {activeSticker.type === 'main' ? 'M' : activeSticker.type === 'tab' ? 'T' : activeStickerIndex - 1}
             </div>
+            {/* 當前顏色指示器 + 顏色選擇器 */}
+            <label
+              className="w-8 h-8 rounded-full border-2 border-white shadow-lg ring-1 ring-gray-200 cursor-pointer hover:scale-110 transition-transform relative overflow-hidden"
+              style={{ backgroundColor: brushSettings.color }}
+              title="點擊選擇顏色"
+            >
+              <input
+                type="color"
+                value={brushSettings.color}
+                onChange={(e) => setBrushSettings(prev => ({ ...prev, color: e.target.value }))}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              />
+            </label>
             <h2 className="font-bold text-gray-800 truncate max-w-[150px] hidden sm:block">{project.name}</h2>
           </div>
         </div>
@@ -490,7 +592,12 @@ export const Editor: React.FC<EditorProps> = ({ project, onBack, onUpdateProject
           projectId={project.id}
           stickerIndex={activeStickerIndex}
           onSaveComplete={handleSaveComplete}
-          onHistoryChange={(u, r) => { setCanUndo(u); setCanRedo(r); }}
+          onHistoryChange={(u, r) => { setCanUndo(u); setCanRedo(r); if (u) triggerAutoSave(); }}
+          onColorPick={(color) => {
+            setBrushSettings(prev => ({ ...prev, color, tool: prev.tool === 'eyedropper' ? 'brush' : prev.tool }));
+            setPickedColor(color);
+            setTimeout(() => setPickedColor(null), 1500);
+          }}
         />
 
         {!isZenMode && (
